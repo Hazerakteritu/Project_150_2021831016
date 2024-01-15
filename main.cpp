@@ -1,198 +1,160 @@
-#include <SDL2/SDL.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdbool.h>
+#include<bits/stdc++.h>
+#include<SDL2/SDL.h>
+using namespace std;
+#include <vector>
 
 // Constants
-#define SCREEN_WIDTH 640
-#define SCREEN_HEIGHT 480
-#define SNAKE_SIZE 20
-#define INITIAL_SNAKE_LENGTH 3
+const int SCREEN_WIDTH = 640;
+const int SCREEN_HEIGHT = 480;
+const int BLOCK_SIZE = 20;
 
-// Structs
-typedef struct {
+// Snake structure
+struct SnakeSegment {
     int x, y;
-} Snack;
-
-typedef struct {
-    int x, y;
-} SnakeSegment;
-
-typedef struct {
-    SnakeSegment *segments;
-    int length;
-    int direction; // 0: up, 1: right, 2: down, 3: left
-} Snake;
+};
 
 // Function prototypes
-void initialize();
-void handleInput();
-void update();
-void render();
-void cleanup();
+void render(SDL_Renderer* renderer, const std::vector<SnakeSegment>& snake, const SDL_Point& food);
+void update(std::vector<SnakeSegment>& snake, SDL_Point& food, SDL_Keycode direction, bool& running);
+bool checkCollision(const std::vector<SnakeSegment>& snake, int x, int y);
 
-// SDL variables
-SDL_Window *window = NULL;
-SDL_Renderer *renderer = NULL;
-
-// Game variables
-Snake snake;
-Snack snack;
-int score = 0;
-
-int main() {
-    initialize();
-
-    while (1) {
-        handleInput();
-        update();
-        render();
-        SDL_Delay(100); // Adjust the speed of the game
-    }
-
-    cleanup();
-    return 0;
-}
-
-void initialize() {
+int main(int argc, char* argv[]) {
     // Initialize SDL
-    if (SDL_Init(SDL_INIT_VIDEO) < 0) {
-        fprintf(stderr, "SDL initialization failed: %s\n", SDL_GetError());
-        exit(EXIT_FAILURE);
+    if (SDL_Init(SDL_INIT_VIDEO) != 0) {
+        std::cerr << "SDL initialization failed: " << SDL_GetError() << std::endl;
+        return 1;
     }
 
-    // Create window
-    window = SDL_CreateWindow("Snake Game", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN);
-    if (!window) {
-        fprintf(stderr, "Window creation failed: %s\n", SDL_GetError());
-        exit(EXIT_FAILURE);
-    }
+    // Create window and renderer
+    SDL_Window* window = SDL_CreateWindow("Snake Game", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
+                                          SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN);
+    SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
 
-    // Create renderer
-    renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
-    if (!renderer) {
-        fprintf(stderr, "Renderer creation failed: %s\n", SDL_GetError());
-        exit(EXIT_FAILURE);
-    }
+    // Initialize variables
+    std::vector<SnakeSegment> snake{{5, 5}}; // Snake starts with one segment at position (5, 5)
+    SDL_Point food = {10, 10}; // Initial food position
+    SDL_Keycode direction = SDLK_RIGHT; // Initial direction
+    bool running = true;
 
-    // Initialize snake
-    snake.length = INITIAL_SNAKE_LENGTH;
-    snake.direction = 1; // Initial direction: right
-    snake.segments = (SnakeSegment *)malloc(sizeof(SnakeSegment) * INITIAL_SNAKE_LENGTH);
-
-    for (int i = 0; i < INITIAL_SNAKE_LENGTH; ++i) {
-        snake.segments[i].x = SCREEN_WIDTH / 2 - i * SNAKE_SIZE;
-        snake.segments[i].y = SCREEN_HEIGHT / 2;
-    }
-
-    // Initialize snack
-    srand(SDL_GetTicks()); // Seed for random number generation
-    snack.x = rand() % (SCREEN_WIDTH / SNAKE_SIZE) * SNAKE_SIZE;
-    snack.y = rand() % (SCREEN_HEIGHT / SNAKE_SIZE) * SNAKE_SIZE;
-}
-
-void handleInput() {
-    SDL_Event event;
-    while (SDL_PollEvent(&event)) {
-        if (event.type == SDL_QUIT) {
-            fprintf(stderr, "Exiting...\n");
-            exit(EXIT_SUCCESS);
-        } else if (event.type == SDL_KEYDOWN) {
-            switch (event.key.keysym.sym) {
-                case SDLK_UP:
-                    if (snake.direction != 2)
-                        snake.direction = 0;
-                    break;
-                case SDLK_RIGHT:
-                    if (snake.direction != 3)
-                        snake.direction = 1;
-                    break;
-                case SDLK_DOWN:
-                    if (snake.direction != 0)
-                        snake.direction = 2;
-                    break;
-                case SDLK_LEFT:
-                    if (snake.direction != 1)
-                        snake.direction = 3;
-                    break;
+    // Main game loop
+    while (running) {
+        SDL_Event event;
+        while (SDL_PollEvent(&event)) {
+            if (event.type == SDL_QUIT) {
+                running = false;
+            } else if (event.type == SDL_KEYDOWN) {
+                switch (event.key.keysym.sym) {
+                    case SDLK_UP:
+                        if (direction != SDLK_DOWN)
+                            direction = SDLK_UP;
+                        break;
+                    case SDLK_DOWN:
+                        if (direction != SDLK_UP)
+                            direction = SDLK_DOWN;
+                        break;
+                    case SDLK_LEFT:
+                        if (direction != SDLK_RIGHT)
+                            direction = SDLK_LEFT;
+                        break;
+                    case SDLK_RIGHT:
+                        if (direction != SDLK_LEFT)
+                            direction = SDLK_RIGHT;
+                        break;
+                    default:
+                        break;
+                }
             }
         }
-    }
-}
 
-void update() {
-    // Move the snake
-    for (int i = snake.length - 1; i > 0; --i) {
-        snake.segments[i] = snake.segments[i - 1];
-    }
+        // Update game logic
+        update(snake, food, direction, running);
 
-    switch (snake.direction) {
-        case 0:
-            snake.segments[0].y -= SNAKE_SIZE;
-            break;
-        case 1:
-            snake.segments[0].x += SNAKE_SIZE;
-            break;
-        case 2:
-            snake.segments[0].y += SNAKE_SIZE;
-            break;
-        case 3:
-            snake.segments[0].x -= SNAKE_SIZE;
-            break;
+        // Clear the renderer
+        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+        SDL_RenderClear(renderer);
+
+        // Render objects
+        render(renderer, snake, food);
+
+        // Update screen
+        SDL_RenderPresent(renderer);
+
+        // Add a delay to control the speed of the game
+        SDL_Delay(100);
     }
 
-    // Check for collision with snack
-    if (snake.segments[0].x == snack.x && snake.segments[0].y == snack.y) {
-        // Increase score
-        score++;
-        // Generate new snack location
-        snack.x = rand() % (SCREEN_WIDTH / SNAKE_SIZE) * SNAKE_SIZE;
-        snack.y = rand() % (SCREEN_HEIGHT / SNAKE_SIZE) * SNAKE_SIZE;
-        // Increase snake length
-        snake.length++;
-        snake.segments =(SnakeSegment *) realloc(snake.segments, sizeof(SnakeSegment) * snake.length);
-    }
-
-    // Check for collision with walls or itself
-    if (snake.segments[0].x < 0 || snake.segments[0].x >= SCREEN_WIDTH ||
-        snake.segments[0].y < 0 || snake.segments[0].y >= SCREEN_HEIGHT) {
-        fprintf(stderr, "Game over! Your score: %d\n", score);
-        exit(EXIT_SUCCESS);
-    }
-
-    for (int i = 1; i < snake.length; ++i) {
-        if (snake.segments[0].x == snake.segments[i].x && snake.segments[0].y == snake.segments[i].y) {
-            fprintf(stderr, "Game over! Your score: %d\n", score);
-            exit(EXIT_SUCCESS);
-        }
-    }
-}
-
-void render() {
-    // Clear the screen
-    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-    SDL_RenderClear(renderer);
-
-    // Render snake
-    SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
-    for (int i = 0; i < snake.length; ++i) {
-        SDL_Rect rect = {snake.segments[i].x, snake.segments[i].y, SNAKE_SIZE, SNAKE_SIZE};
-        SDL_RenderFillRect(renderer, &rect);
-    }
-
-    // Render snack
-    SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
-    SDL_Rect snackRect = {snack.x, snack.y, SNAKE_SIZE, SNAKE_SIZE};
-    SDL_RenderFillRect(renderer, &snackRect);
-
-    // Update the window
-    SDL_RenderPresent(renderer);
-}
-
-void cleanup() {
-    // Clean up SDL
-    free(snake.segments);
+    // Clean up and quit SDL
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
     SDL_Quit();
+
+    return 0;
+}
+
+void render(SDL_Renderer* renderer, const std::vector<SnakeSegment>& snake, const SDL_Point& food) {
+    // Render snake
+    for (const auto& segment : snake) {
+        SDL_Rect blockRect = {segment.x * BLOCK_SIZE, segment.y * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE};
+        SDL_SetRenderDrawColor(renderer, 0, 255, 0, 255);
+        SDL_RenderFillRect(renderer, &blockRect);
+    }
+
+    // Render food
+    SDL_Rect foodRect = {food.x * BLOCK_SIZE, food.y * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE};
+    SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
+    SDL_RenderFillRect(renderer, &foodRect);
+}
+
+void update(std::vector<SnakeSegment>& snake, SDL_Point& food, SDL_Keycode direction, bool& running) {
+    // Update snake's position based on the direction
+    int headX = snake.front().x;
+    int headY = snake.front().y;
+
+    switch (direction) {
+        case SDLK_UP:
+            headY--;
+            break;
+        case SDLK_DOWN:
+            headY++;
+            break;
+        case SDLK_LEFT:
+            headX--;
+            break;
+        case SDLK_RIGHT:
+            headX++;
+            break;
+        default:
+            break;
+    }
+
+    // Check for collisions with food or the snake's body
+    if (headX == food.x && headY == food.y) {
+        // Snake ate the food, so increase its length and generate new food
+        SnakeSegment newSegment = {headX, headY};
+        snake.insert(snake.begin(), newSegment);
+        food.x = rand() % (SCREEN_WIDTH / BLOCK_SIZE);
+        food.y = rand() % (SCREEN_HEIGHT / BLOCK_SIZE);
+    } else {
+        // Check for collision with the snake's body
+        if (checkCollision(snake, headX, headY)) {
+            running = false;
+            return;
+        }
+
+        // Move the snake by adding a new head and removing the tail
+        SnakeSegment newHead = {headX, headY};
+        snake.insert(snake.begin(), newHead);
+        snake.pop_back();
+    }
+}
+
+bool checkCollision(const std::vector<SnakeSegment>& snake, int x, int y) {
+    // Check for collision with the snake's body
+    for (size_t i = 1; i < snake.size(); ++i) {
+        if (snake[i].x == x && snake[i].y == y) {
+            return true;
+        }
+    }
+    // Check if the snake collided with the screen edges
+    return (x >= SCREEN_WIDTH / BLOCK_SIZE || x < 0 || y >= SCREEN_HEIGHT / BLOCK_SIZE || y < 0);
 }
