@@ -3,10 +3,9 @@
 using namespace std;
 #include <vector>
 
-// Constants
-const int SCREEN_WIDTH = 640;
-const int SCREEN_HEIGHT = 480;
-const int BLOCK_SIZE = 20;
+const int SCREEN_WIDTH = 700;
+const int SCREEN_HEIGHT = 500;
+const int BLOCK_SIZE = 15;
 
 // Snake structure
 struct SnakeSegment {
@@ -32,7 +31,7 @@ int main(int argc, char* argv[]) {
 
     // Initialize variables
     std::vector<SnakeSegment> snake{{5, 5}}; // Snake starts with one segment at position (5, 5)
-    SDL_Point food = {10, 10}; // Initial food position
+    SDL_Point food = {30, 5}; // Initial food position
     SDL_Keycode direction = SDLK_RIGHT; // Initial direction
     bool running = true;
 
@@ -95,7 +94,7 @@ void render(SDL_Renderer* renderer, const std::vector<SnakeSegment>& snake, cons
     // Render snake
     for (const auto& segment : snake) {
         SDL_Rect blockRect = {segment.x * BLOCK_SIZE, segment.y * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE};
-        SDL_SetRenderDrawColor(renderer, 0, 255, 0, 255);
+        SDL_SetRenderDrawColor(renderer, 153, 204, 255, 255);
         SDL_RenderFillRect(renderer, &blockRect);
     }
 
