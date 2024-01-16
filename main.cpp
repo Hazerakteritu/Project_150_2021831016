@@ -13,8 +13,8 @@ struct SnakeSegment {
 };
 
 // Function prototypes
-void render(SDL_Renderer* renderer, const std::vector<SnakeSegment>& snake, const SDL_Point& food);
-void update(std::vector<SnakeSegment>& snake, SDL_Point& food, SDL_Keycode direction, bool& running);
+void render(SDL_Renderer* renderer, const std::vector<SnakeSegment>& snake, const SDL_Point& food, int score);
+void update(std::vector<SnakeSegment>& snake, SDL_Point& food, SDL_Keycode direction, bool& running, int& score);
 bool checkCollision(const std::vector<SnakeSegment>& snake, int x, int y);
 
 int main(int argc, char* argv[]) {
@@ -34,6 +34,7 @@ int main(int argc, char* argv[]) {
     SDL_Point food = {30, 5}; // Initial food position
     SDL_Keycode direction = SDLK_RIGHT; // Initial direction
     bool running = true;
+    int score = 0;
 
     // Main game loop
     while (running) {
@@ -66,14 +67,14 @@ int main(int argc, char* argv[]) {
         }
 
         // Update game logic
-        update(snake, food, direction, running);
+        update(snake, food, direction, running, score);
 
         // Clear the renderer
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
         SDL_RenderClear(renderer);
 
         // Render objects
-        render(renderer, snake, food);
+        render(renderer, snake, food, score);
 
         // Update screen
         SDL_RenderPresent(renderer);
@@ -87,10 +88,12 @@ int main(int argc, char* argv[]) {
     SDL_DestroyWindow(window);
     SDL_Quit();
 
+    std::cout << "Game Over! Score: " << score << std::endl;
+
     return 0;
 }
 
-void render(SDL_Renderer* renderer, const std::vector<SnakeSegment>& snake, const SDL_Point& food) {
+void render(SDL_Renderer* renderer, const std::vector<SnakeSegment>& snake, const SDL_Point& food, int score) {
     // Render snake
     for (const auto& segment : snake) {
         SDL_Rect blockRect = {segment.x * BLOCK_SIZE, segment.y * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE};
@@ -102,9 +105,12 @@ void render(SDL_Renderer* renderer, const std::vector<SnakeSegment>& snake, cons
     SDL_Rect foodRect = {food.x * BLOCK_SIZE, food.y * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE};
     SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
     SDL_RenderFillRect(renderer, &foodRect);
+
+    // Display the score on the console
+    std::cout << "Score: " << score << "\r" << std::flush;
 }
 
-void update(std::vector<SnakeSegment>& snake, SDL_Point& food, SDL_Keycode direction, bool& running) {
+void update(std::vector<SnakeSegment>& snake, SDL_Point& food, SDL_Keycode direction, bool& running, int& score) {
     // Update snake's position based on the direction
     int headX = snake.front().x;
     int headY = snake.front().y;
@@ -133,6 +139,7 @@ void update(std::vector<SnakeSegment>& snake, SDL_Point& food, SDL_Keycode direc
         snake.insert(snake.begin(), newSegment);
         food.x = rand() % (SCREEN_WIDTH / BLOCK_SIZE);
         food.y = rand() % (SCREEN_HEIGHT / BLOCK_SIZE);
+        score++;
     } else {
         // Check for collision with the snake's body
         if (checkCollision(snake, headX, headY)) {
